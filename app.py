@@ -1,26 +1,17 @@
-import torch
 import pickle
 from flask import Flask, render_template, request
 
 # -----------------------------
-# 1. Load model safely on CPU
+# 1. Load Pickle Model
 # -----------------------------
 model_path = "sentiment_analysis.pkl"
 
 try:
-    # Try loading as PyTorch checkpoint
-    sentiment_pipeline = torch.load(
-        model_path,
-        map_location=torch.device('cpu'),  # force CPU
-        weights_only=False
-    )
-    sentiment_pipeline.eval()
-    print("Loaded model using torch.load")
-except (RuntimeError, pickle.UnpicklingError):
-    # Fallback: load as standard Python pickle
     with open(model_path, "rb") as f:
         sentiment_pipeline = pickle.load(f)
-    print("Loaded model using pickle.load")
+    print("✅ Model loaded successfully using pickle.")
+except Exception as e:
+    raise RuntimeError(f"❌ Failed to load model: {e}")
 
 # -----------------------------
 # 2. Setup Flask
@@ -33,25 +24,19 @@ def index():
     text_input = ""
 
     if request.method == "POST":
-        text_input = request.form["text"]
+        text_input = request.form.get("text", "")
 
         try:
-            with torch.no_grad():
-                # If model is PyTorch nn.Module
-                if isinstance(sentiment_pipeline, torch.nn.Module):
-                    # Adjust if your model expects tensors
-                    result = sentiment_pipeline(text_input)
-                else:
-                    # For pickle or Hugging Face-like pipelines
-                    result = sentiment_pipeline(text_input)
+            # For Hugging Face or sklearn pipeline
+            result = sentiment_pipeline(text_input)
 
-                # Extract label if result is a list of dicts
-                if isinstance(result, list) and "label" in result[0]:
-                    sentiment = result[0]["label"]
-                else:
-                    sentiment = str(result)
+            # Handle Hugging Face-like output
+            if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                sentiment = result[0].get("label", "Unknown")
+            else:
+                sentiment = str(result)
         except Exception as e:
-            sentiment = f"Error during inference: {e}"
+            sentiment = f"Error during prediction: {e}"
 
     return render_template("index.html", sentiment=sentiment, text_input=text_input)
 
