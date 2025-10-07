@@ -5,7 +5,7 @@ from flask import Flask, render_template, request
 # -----------------------------
 # 1. Load model safely on CPU
 # -----------------------------
-model_path = "D:/Git/Sentiment_Analysis/sentiment_analysis.pkl"
+model_path = "sentiment_analysis.pkl"
 
 try:
     # Try loading as PyTorch checkpoint
